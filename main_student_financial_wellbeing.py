@@ -3,24 +3,35 @@ from time import strftime, time
 from tkinter import messagebox
 import json
 
+def fout():
+    global data
+    with open("data.json", "w") as fout:
+        json.dump(data, fout)
+
+def fin():
+    global data
+    with open("data.json", "r") as fin:
+        data = json.load(fin)
+    
+
 def update_record(data):
    pass 
 
 
 def update_analysis(data):
     try:
-        per_T1=round(data["T1"][0]/(data["T1"][0]+data["T3"][0]+data["T3"][0])*100, 2)
+        per_T1=round(data["T1"][0]/(data["T1"][0]+data["T2"][0]+data["T3"][0])*100, 2)
         lbl_T1["text"]=f'Mandatory: {data["T1"][0]} ({per_T1}% totally)'
     except:
         pass
     
     try:    
-        per_T2=round(data["T2"][0]/(data["T1"][0]+data["T3"][0]+data["T3"][0])*100, 2)
+        per_T2=round(data["T2"][0]/(data["T1"][0]+data["T2"][0]+data["T3"][0])*100, 2)
         lbl_T2["text"]=f'Wasted: {data["T2"][0]} ({per_T2}% totally)'
     except:
         pass
     try:
-        per_T3=round(data["T3"][0]/(data["T1"][0]+data["T3"][0]+data["T3"][0])*100, 2)
+        per_T3=round(data["T3"][0]/(data["T1"][0]+data["T2"][0]+data["T3"][0])*100, 2)
         lbl_T3["text"] = f'Need considering: {data["T3"][0]} ({per_T3}% totally)'
     except:
         pass
@@ -46,6 +57,7 @@ def add_expense(event):
     curtime = strftime("%m/%d/%Y, %H:%M:%S")
 
     try:
+        fin()
         amount = int(amount)
         if x == "Y" or x == "y":
             if y == "Y" or y == "y":
@@ -57,10 +69,28 @@ def add_expense(event):
                 type = "needs considering"
             if z == "N" or z == "n":
                 type = "wasted"
-        if len(data["Record"]) == 0:
-            data["Record"][this_month]=[curtime, amount, type]
-            print(data)
+        if len(data["Record"]) == 0 or this_month not in data["Record"].keys():
+            data["Record"][this_month]=[[curtime, amount, type]]
+            data["T1"].insert(0,0)
+            data["T2"].insert(0,0)
+            data["T3"].insert(0,0)
+        else:
+            data["Record"][this_month].insert(0,[curtime, amount, type])
+        if type == "mandatory":
+            data["T1"][0] += amount
+        elif type == "wasted":
+            data["T2"][0] += amount
+        else:
+            data["T3"][0] += amount
         
+        fout()   
+        print(data) 
+        update_analysis(data)
+        ent_expense_amount.delete(0,"end")
+        ent_exp_q1.delete(0,"end")
+        ent_exp_q2.delete(0,"end")
+        ent_exp_q3.delete(0,"end")
+
     except:
         messagebox.showerror("Wrong type!!", "Input what you are asked to.")
 
@@ -68,6 +98,7 @@ def add_income(event):
     global data
     income = ent_income_amount.get()
     try: 
+        data
         income = int(income)
         this_month = strftime("%m/%Y")
         if len(data["Month"]) == 0:
@@ -160,28 +191,20 @@ def show_ent_expense(event):
 #Data
 
 data ={
-    "T1": [],
-    "T2": [],
-    "T3": [],
-    "Income":[],
-    "Month": [],
-    "Balance": [],
-    "Record": {
-        
-    }
+
         
     }
 
 
-with open("data.json", "w") as w_f:
-    json.dump(data, w_f)
+with open("data.json", "r") as r_f:
+    data = json.load(r_f)
 
 #Data:end
 
 
 window = tk.Tk()
 window.geometry("330x560+5+5")
-window.resizable(False,False)
+#window.resizable(False,False)
 window.title("Student Financial Wellbeing")
 
 lbl_month = tk.Label(text=f'{strftime("%m/%Y")}' , font="Cascadia", fg="#5d5c61", background= "#7395AE",width=29, height=2)

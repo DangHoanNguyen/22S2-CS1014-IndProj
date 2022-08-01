@@ -13,21 +13,19 @@ def fin():
     with open("data.json", "r") as fin:
         data = json.load(fin)
     
-
 def update_record(data):
-   pass 
-
+    lb_display_record.insert(0,data["Record"][0][0])
 
 def update_analysis(data):
     try:
         per_T1=round(data["T1"][0]/(data["T1"][0]+data["T2"][0]+data["T3"][0])*100, 2)
-        lbl_T1["text"]=f'Mandatory: {data["T1"][0]} ({per_T1}% totally)'
+        lbl_T1["text"]=f'MANDATORY: {data["T1"][0]} ({per_T1}% totally)'
     except:
         pass
     
     try:    
         per_T2=round(data["T2"][0]/(data["T1"][0]+data["T2"][0]+data["T3"][0])*100, 2)
-        lbl_T2["text"]=f'Wasted: {data["T2"][0]} ({per_T2}% totally)'
+        lbl_T2["text"]=f'WASTED: {data["T2"][0]} ({per_T2}% totally)'
     except:
         pass
     try:
@@ -37,12 +35,12 @@ def update_analysis(data):
         pass
 
     try:
-        lbl_income_display["text"] = f'Income: {data["Income"][0]}'
+        lbl_income_display["text"] = f'INCOME: {data["Income"][0]}'
     except:
         pass
 
     try:
-        lbl_balance["text"]=f'BALANCE: {data["Balance"][0]}'
+        lbl_balance["text"]=f'BALANCE: {data["Balance"]}'
     except:
         pass
 
@@ -69,13 +67,22 @@ def add_expense(event):
                 type = "needs considering"
             if z == "N" or z == "n":
                 type = "wasted"
-        if len(data["Record"]) == 0 or this_month not in data["Record"].keys():
-            data["Record"][this_month]=[[curtime, amount, type]]
+    
+        if this_month not in data["Month"]:
+            data["Month"].insert(0, this_month)
+            data["Record"].insert(0, [[curtime, amount, type]])
+            data["T1"].insert(0,0)
+            data["T2"].insert(0,0)
+            data["T3"].insert(0,0)
+        elif len(data["T1"]) != len(data["Month"]) +1:
+            data["Record"].insert(0, [[curtime, amount, type]])
             data["T1"].insert(0,0)
             data["T2"].insert(0,0)
             data["T3"].insert(0,0)
         else:
-            data["Record"][this_month].insert(0,[curtime, amount, type])
+            data["Record"][0].insert(0,[curtime, amount, type])
+            
+        data["Balance"] -= amount
         if type == "mandatory":
             data["T1"][0] += amount
         elif type == "wasted":
@@ -86,6 +93,7 @@ def add_expense(event):
         fout()   
         print(data) 
         update_analysis(data)
+        update_record(data)
         ent_expense_amount.delete(0,"end")
         ent_exp_q1.delete(0,"end")
         ent_exp_q2.delete(0,"end")
@@ -97,28 +105,29 @@ def add_expense(event):
 def add_income(event):
     global data
     income = ent_income_amount.get()
-    try: 
-        data
+
+    try:     
+        fin()
         income = int(income)
         this_month = strftime("%m/%Y")
-        if len(data["Month"]) == 0:
+        if this_month not in data["Month"]:
             data["Month"].insert(0,this_month)
             data["Income"].insert(0,income)
-        elif this_month != data["Month"][0]:
-            data["Month"].insert(0,this_month)
+        elif len(data["Income"]) != len(data["Month"]) +1:
             data["Income"].insert(0,income)
         else:
             data["Income"][0] += income
-            data["Balance"][0] += income
+        data["Balance"] += income
         update_analysis(data)
+        fout()
     except:
-        messagebox.showerror("Wrong type!!", "You must input a number")
+       messagebox.showerror("Wrong type!!", "You must input a number")
     ent_income_amount.delete(0,"end")
     print(data)
 
 def show_analysis(event):
     
-    lbl_display_record.grid_forget()
+    lb_display_record.grid_forget()
     btn_record["bg"]="#557A95"
     btn_record["fg"]="#5d5c61"
     btn_record.bind("<Button-1>", show_record)
@@ -135,7 +144,7 @@ def show_analysis(event):
 
 def show_add(evnet):
     
-    lbl_display_record.grid_forget()
+    lb_display_record.grid_forget()
     btn_record["bg"]="#557A95"
     btn_record["fg"]="#5d5c61"
     btn_record.bind("<Button-1>", show_record)
@@ -162,7 +171,7 @@ def show_record(event):
     btn_add["fg"]="#5d5c61"
     btn_add.bind("<Button-1>", show_add)
 
-    lbl_display_record.grid(row=2, columnspan=3)
+    lb_display_record.grid(row=2, columnspan=3)
     btn_record["fg"]="#557A95"
     btn_record["bg"]="#5d5c61"
     btn_record.unbind("<Button-1>")
@@ -190,10 +199,7 @@ def show_ent_expense(event):
 
 #Data
 
-data ={
-
-        
-    }
+data ={}
 
 
 with open("data.json", "r") as r_f:
@@ -225,8 +231,8 @@ btn_add.bind("<Button-1>", show_add)
 
 #Display information part
 ## Display record:
-lbl_display_record = tk.Label(text=" ", bg="#5d5c61", height=27, width=46)
-lbl_display_record.grid(row=2, columnspan=3)
+lb_display_record = tk.Listbox(width=50, height=25)
+lb_display_record.grid(row=2, columnspan=3)
 
 ## Display analysis
 lbl_display_analysis = tk.Label(text=" ", height=27, width=46)
@@ -234,13 +240,13 @@ lbl_display_analysis = tk.Label(text=" ", height=27, width=46)
 lbl_balance = tk.Label(master=lbl_display_analysis, text='BALANCE: 0',width=46, fg="black")
 lbl_balance.pack()
 
-lbl_income_display = tk.Label(master=lbl_display_analysis, text='Income: 0',width=46, fg="green")
+lbl_income_display = tk.Label(master=lbl_display_analysis, text='INCOME: 0',width=46, fg="green")
 lbl_income_display.pack()
 
-lbl_T1 = tk.Label(master=lbl_display_analysis, text='Mandatory: 0 (0% totally)',width=46, fg= "#379683") 
+lbl_T1 = tk.Label(master=lbl_display_analysis, text='MANDATORY: 0 (0% totally)',width=46, fg= "#379683") 
 lbl_T1.pack()
 
-lbl_T2 = tk.Label(master=lbl_display_analysis, text='Waste: 0 (0% totally)',width=46, fg="red")
+lbl_T2 = tk.Label(master=lbl_display_analysis, text='WASTED: 0 (0% totally)',width=46, fg="red")
 lbl_T2.pack()
 
 lbl_T3 = tk.Label(master=lbl_display_analysis, text='Need considering: 0 (0% totally)',width=46, fg="#577A95")
@@ -305,5 +311,11 @@ lbl_display_value.grid(row=3, columnspan=3)
 lbl_placeholder = tk.Label(text= " ", bg= "#7395AE", height=30, width=46)
 lbl_placeholder.grid(row=4, columnspan=3)
 
+# Load data to gui
 update_analysis(data)
+lb_display_record.delete(0,"end")
+for x in data["Record"][0]:
+    lb_display_record.insert("end",x)
+
+
 window.mainloop()
